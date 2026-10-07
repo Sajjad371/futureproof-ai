@@ -4,7 +4,24 @@ Test AI-proposed Linux application changes in disposable environments before app
 
 ## Status
 
-Planning and repository setup. The agent, sandbox runner, model integration, and dashboard are not implemented yet. No safety or performance results are claimed.
+Version 1 foundation: a Nebius connection smoke test, synthetic cleanup fixture generator, and restricted Podman baseline check are implemented. The baseline check verifies file hashes, HTTP health, and protected document retrieval. Planning, cleanup policy enforcement, action execution, and the dashboard are not implemented yet.
+
+## Run the current checks
+
+From the repository folder in Ubuntu with Python 3.11+ and rootless Podman installed:
+
+```bash
+python3 scripts/check_nebius.py --check-config
+python3 scripts/check_nebius.py
+python3 scripts/create_demo_fixture.py
+python3 scripts/check_demo_container.py
+```
+
+The Nebius checks read local `.env` configuration. Copy `.env.example` to `.env` only if `.env` does not already exist, then supply your own key. The live check uses API credits. Never commit `.env`.
+
+The container check downloads a Python image, builds only synthetic fixture data into a temporary image, and runs without host mounts or external network access. It uses a read-only root filesystem, non-root user, dropped capabilities, no-new-privileges, and memory/CPU/PID limits. Temporary container/image cleanup is attempted afterward; the base image and local fixtures remain. No cleanup action is performed against fixture files.
+
+Validation recorded on October 7, 2026: the real Nebius smoke test passed; the developer reported the baseline container check passing on Ubuntu 24.04 / WSL 2 with rootless Podman 4.9.3. These are foundation checks, not a complete security evaluation.
 
 ## Planned workflow
 
