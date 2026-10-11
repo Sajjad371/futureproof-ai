@@ -10,6 +10,7 @@ import uuid
 
 from check_nebius import ROOT
 from cleanup_policy import validate_plan
+from approval_state import binding
 
 WORKER = r'''
 import hashlib, json, pathlib, shutil, http.server, threading, urllib.request
@@ -79,6 +80,9 @@ def main():
     evidence = {'status':'failed', 'container':name, 'target_applied':False}
     created = False
     try:
+        initial_binding = binding(fixture)
+        evidence['evidence_version'] = 2
+        evidence['binding'] = initial_binding
         manifest = json.loads((fixture / 'manifest.json').read_text())
         record = json.loads((fixture / 'planning-result.json').read_text())
         if record.get('status') != 'policy_passed':
@@ -141,7 +145,7 @@ def main():
             evidence[key] = report[key]
         unchanged = all(hashlib.sha256((fixture/e['path']).read_bytes()).hexdigest()==e['sha256'] for e in manifest['files'])
         evidence['original_unchanged'] = unchanged
-        if not unchanged:
+        if not unchanged or binding(fixture) != initial_binding:
             raise ValueError('Original fixture changed')
         print('PASS: cleanup completed inside the disposable container.')
         print('PASS: protected and recent files unchanged; HTTP health and download passed.')
