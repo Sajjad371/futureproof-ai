@@ -4,7 +4,7 @@ Test AI-proposed Linux application changes in disposable environments before app
 
 ## Status
 
-Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. Multiple distinct valid strategies remain unverified. The dashboard is not implemented yet.
+Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. The cleanup fixture has only one valid complete plan; distinct valid alternatives have now been demonstrated in the configuration scenario. The configuration workflow also passed live comparison, approval, application and recovery in Ubuntu on October 12. Service restart, dashboard, and held-out evaluation are not implemented yet.
 
 ## Run the current checks
 
@@ -29,7 +29,7 @@ The Nebius checks read local `.env` configuration. Copy `.env.example` to `.env`
 
 The container check downloads a Python image, builds only synthetic fixture data into a temporary image, and runs without host mounts or external network access. It uses a read-only root filesystem, non-root user, dropped capabilities, no-new-privileges, and memory/CPU/PID limits. Temporary container/image cleanup is attempted afterward; the base image and local fixtures remain. The baseline check performs no cleanup. The simulation deletes eligible files only from a container-local copy, verifies preserved file hashes and HTTP behavior, checks the original fixture remains unchanged, and writes JSON evidence under ignored `artifacts/`. The host rejects incomplete or inconsistent worker reports.
 
-Validation recorded on October 7, 2026: the real Nebius smoke test passed; the developer reported the baseline container check passing on Ubuntu 24.04 / WSL 2 with rootless Podman 4.9.3. On October 11, 2026, the developer reported successful live Nebius planning, all 10 simulation tests, and a real Podman cleanup simulation with the strengthened report checks. Latest local test discovery ran 49 tests: 48 passed and one Windows symlink test was skipped; the developer previously ran all nine policy tests successfully in Ubuntu. Approval and comparison tests also passed in Ubuntu. The live recommended candidate was approved, applied, and restored, with file hashes and HTTP checks passing. Simulation/comparison unit tests mock Podman responses; the real container runs are separate. This is a controlled demo, not a complete security evaluation.
+Validation recorded on October 7, 2026: the real Nebius smoke test passed; the developer reported the baseline container check passing on Ubuntu 24.04 / WSL 2 with rootless Podman 4.9.3. On October 11, 2026, the developer reported successful live Nebius planning, all 10 simulation tests, and a real Podman cleanup simulation with the strengthened report checks. Latest local test discovery ran 86 tests: 85 passed and one Windows symlink test was skipped; the developer previously ran all nine policy tests successfully in Ubuntu. Approval and comparison tests also passed in Ubuntu. The live recommended candidate was approved, applied, and restored, with file hashes and HTTP checks passing. Simulation/comparison unit tests mock Podman responses; the real container runs are separate. This is a controlled demo, not a complete security evaluation.
 
 ## Planned workflow
 
@@ -97,3 +97,70 @@ python3 scripts/compare_cleanup.py
 The comparison command creates a fresh baseline and requests one to three structured plans from Nebius (uses API credits). Policy-denied plans never reach a container. Duplicate action sets are reported as duplicates and simulated once. Each distinct eligible candidate gets a separate identical fixture copy and a restricted container simulation, with evidence tied to that copy. Passing candidates are ordered by removed file bytes, then fewer actions, then original input order for ties. This is a deterministic outcome ranking, not a safety score or net disk-space measurement.
 
 The current one-file cleanup task has only one valid complete deletion plan; returning one candidate is expected. Do not interpret duplicate proposals as diverse strategies. Broader meaningful alternatives require additional supported tasks. If no candidate passes, no recommendation is made. Otherwise the command prints the exact review command for the recommended candidate copy; it never approves or applies it automatically. Reports remain under ignored artifacts. Unit tests mock simulation; live container verification is a separate step.
+
+## Configuration scenario foundation (October 12)
+
+```bash
+python3 scripts/test_config_fixture.py
+python3 scripts/config_fixture.py
+```
+
+The new fixture starts with a 1 MiB upload limit and requires a 2 MiB upload, with an 8 MiB policy ceiling. Only `SET_CONFIG` on `app.json` / `max_upload_bytes` is allowed. The document reference, authentication requirement, bind address, and protected document must be preserved. Both 2 MiB and 4 MiB settings pass configuration outcome checks; an insufficient but policy-bounded 1 MiB value fails the task outcome. Eight local tests cover these distinctions, protected settings, invalid actions/values, JSON syntax, and content drift.
+
+The fixture and read-only policy tests passed in Ubuntu. Real HTTP upload verification and a restricted container test runner are now implemented; local and Ubuntu HTTP tests pass, and the 2 MiB and 4 MiB candidates passed real restricted Podman runs in Ubuntu. Nebius configuration planning and candidate comparison are implemented and locally tested; the live run passed in Ubuntu with distinct 2 MiB and 4 MiB AI candidates. Configuration approval, application, and recovery passed Ubuntu tests and a live manual run on October 12, 2026. The approved 2 MiB setting was applied, checked over HTTP, then restored to the original 1 MiB configuration with all checks passing. Do not use the cleanup commands on configuration fixtures. All original blueprint requirements remain subject to the acceptance checklist; a working cleanup demonstration does not mean the complete milestone or release criteria are satisfied.
+
+### Configuration HTTP/container checks
+
+```bash
+python3 scripts/test_config_http.py
+python3 scripts/check_config_container.py config-REPLACE_ME
+python3 scripts/check_config_container.py config-REPLACE_ME --limit-mib 4
+```
+
+Use a fixture name printed by `config_fixture.py`. The default tests a fixed 2 MiB candidate; the optional command tests 4 MiB. These are developer-defined test candidates, not model-generated proposals. Each run copies only the fixture's two files and manifest into an isolated build context, checks rootless Podman, and runs with no host mounts, no external network, a read-only root, dropped capabilities, and bounded writable storage/resources. It does not change the original configuration.
+
+The synthetic app must reject the 2 MiB upload before modification, accept it afterward, and return identical uploaded bytes. Oversized and unauthenticated uploads must be rejected without overwriting accepted data. Health, protected document hashes, and protected settings are also checked. The test credential is a public synthetic constant used only by this loopback demo. This app is not a production authentication implementation. Evidence stays in ignored artifacts; temporary container/image removal is attempted on success and failure.
+
+### Nebius configuration comparison
+
+```bash
+python3 scripts/test_compare_config.py
+python3 scripts/compare_config.py config-REPLACE_ME
+```
+
+The live command uses API credits to request one to three structured configuration plans. It validates each plan, rejects protected-setting changes, deduplicates identical limit values, and tests eligible values on independent copies of the same baseline. It accepts no shell commands. Only candidates with matching baseline/limit evidence and all required HTTP checks can be recommended. Ranking chooses the smallest sufficient limit, with input order as a deterministic tie-breaker. This scenario-specific ranking does not yet implement the blueprint's full weighted score.
+
+The comparison saves validated plans, fingerprints, per-candidate evidence references, durations, and a recommendation under ignored artifacts. No approval or target application occurs. Seven orchestration tests simulate runner responses; the five HTTP tests separately exercise the actual loopback application. Live AI candidates may differ in count and values; no fixed fallback replaces a failed model call.
+
+### Review configuration approval
+
+```bash
+python3 scripts/test_approve_config.py
+python3 scripts/approve_config.py config-BASELINE config-comparison-REPORT.json
+```
+
+Use the baseline and comparison filename from the live comparison. The recommended passing candidate is selected by default; `--candidate 2` can explicitly select another passing candidate. Review the exact setting/value and type the displayed phrase only if you agree. The command verifies the comparison, candidate plan, simulation fingerprints, original baseline, candidate file contents and metadata, then checks again after confirmation. It records the local username, exact candidate fixture scope, and a 24-hour expiry. Records remain trusted-local artifacts, not authenticated multi-user approvals. No configuration is changed. The configuration executor enforces expiry before application and uses a per-approval transaction directory to prevent reuse, including after restoration.
+
+### Apply and recover an approved configuration
+
+```bash
+python3 scripts/test_apply_config.py
+python3 scripts/apply_config.py apply config-CANDIDATE config-approval-APPROVAL.json
+python3 scripts/apply_config.py recover config-CANDIDATE config-approval-APPROVAL.json
+```
+
+Use the candidate fixture and approval filename printed by the approval command. Application rechecks expiry, scope, comparison, simulation, plan, file hashes and metadata while holding a cooperating-process lock. A verified original `app.json` backup is required before atomic replacement. Real loopback HTTP checks read the applied configuration; temporary upload data is isolated and removed. On postflight failure, the executor attempts restoration and verifies original bytes, metadata, upload behavior, authentication, health and document preservation. Explicit recovery can restore an interrupted or successful attempt and does not require an unexpired approval. Recovery refuses to overwrite unexpected edits or use a corrupt backup.
+
+Only the named synthetic candidate fixture changes. The comparison baseline remains intact. Backups and transaction records are retained under ignored artifacts. As with cleanup, local records are trusted, locks do not stop unrelated writers, and power-loss durability is not guaranteed. A restored approval remains consumed. Nine tests cover real application/recovery, expiry, wrong scope, backup failure, failed postflight, interruption, replay and recovery conflicts.
+
+## Milestone checkpoint — October 12, 2026
+
+| Original target dates | Current demonstrated result | Remaining work |
+|---|---|---|
+| October 6–10 | Connected cleanup demo, live model call, policy and container verification | Full V1 checklist coverage is not certified; see acceptance checklist |
+| October 11–15 | Candidate evaluation, exact approval, controlled application and restoration demonstrated; two distinct valid AI configurations compared | Blueprint weighted ranking, fuller audit records, uniform approval/expiry semantics and broader failure coverage |
+| October 16–20 | Configuration scenario demonstrated end to end | Service restart, common API/dashboard, held-out evaluation, further integration and hardening |
+| October 21–25 | Not started as a release milestone | Clean-install reproduction, deployed build, full release/evaluation runs |
+| October 26–29 | Repository and ongoing documentation available | Video, final write-up, rule/link checks and submission |
+
+Two of three planned task families have a working controlled command-line demonstration. This is not a percentage of total project completion: interface, evaluation, release and submission work remain substantial. The dates are the original schedule, not claims that every acceptance criterion for a date range is finished.
