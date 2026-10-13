@@ -4,7 +4,7 @@ Test AI-proposed Linux application changes in disposable environments before app
 
 ## Status
 
-Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. The cleanup fixture has only one valid complete plan; distinct valid alternatives have now been demonstrated in the configuration scenario. The configuration workflow also passed live comparison, approval, application and recovery in Ubuntu on October 12. The synthetic restart workflow passed live planning, container simulation, approval, application and recovery on October 13. A read-only local evidence dashboard is now available; workflow controls and held-out evaluation remain pending.
+Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. The cleanup fixture has only one valid complete plan; distinct valid alternatives have now been demonstrated in the configuration scenario. The configuration workflow also passed live comparison, approval, application and recovery in Ubuntu on October 12. The synthetic restart workflow passed live planning, container simulation, approval, application and recovery on October 13. The configuration workflow also passed end to end through the local dashboard on October 13. Broader held-out evaluation remains pending.
 
 ## Run the current checks
 
@@ -192,9 +192,36 @@ at the approval prompt, and type `RECOVER` at the application session prompt.
 python3 scripts/dashboard.py
 ```
 
-Open http://127.0.0.1:8765 in your browser. The initial dashboard and GET `/api/runs`
-show saved record names and historical statuses from all three fixture families.
-They do not revalidate records or approve/apply anything. The server binds only to
-loopback, does not serve arbitrary files, and never returns raw records or credentials.
-No additional packages are needed. Stop with Ctrl+C. The full workflow API,
-interactive approval controls, evaluation, and release hardening remain pending.
+Open http://127.0.0.1:8765 in your browser. The local dashboard supports fixture
+creation, fixed configuration/restart container checks, Nebius configuration
+candidate generation/comparison, explicit configuration review/approval, application,
+and recovery. The developer verified this complete configuration flow in Ubuntu
+on October 13: baseline config-2p36emsq, recommended candidate config-ojkujaik,
+2 MiB application followed by verified restoration to 1 MiB.
+
+AI comparison uses credits; fixed checks do not. Approval and application require
+separate exact phrases. Review tickets last ten minutes and are single-use;
+configuration approvals last 24 hours and the executor prevents reuse. POST actions
+require the local page token and checked Host/Origin. This is a trusted single-user
+loopback demo, not a multi-user authentication system. Keep the server running until
+jobs finish. Jobs are memory-only; abrupt shutdown does not provide durable job
+resumption. Cleanup and restart AI/approval/application workflows remain CLI-based.
+
+Saved evidence is historical, not revalidation. Grouping uses file modification time.
+Failure messages classify runner failure, timeout, and launch failure; inspect saved
+fixture evidence and transactions for the actual outcome before retrying. Raw child
+output and credentials are not returned to the browser. No extra packages are needed.
+
+### Regression evaluation
+
+```bash
+python3 scripts/evaluate_policies.py
+python3 -m unittest discover -s scripts -p "test_*.py"
+```
+
+The deterministic regression matrix checks 15 configuration/restart policy cases,
+including invalid values and unauthorized services, and preservation of fixture files.
+All 15 passed locally on October 13. This is not held-out model-quality evaluation,
+container testing, or proof of production safety. Reports stay under ignored artifacts.
+Held-out evaluation, complete cross-scenario dashboard coverage, job persistence,
+release reproducibility, and submission work remain outstanding.
