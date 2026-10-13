@@ -4,7 +4,7 @@ Test AI-proposed Linux application changes in disposable environments before app
 
 ## Status
 
-Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. The cleanup fixture has only one valid complete plan; distinct valid alternatives have now been demonstrated in the configuration scenario. The configuration workflow also passed live comparison, approval, application and recovery in Ubuntu on October 12. Service restart, dashboard, and held-out evaluation are not implemented yet.
+Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. The cleanup fixture has only one valid complete plan; distinct valid alternatives have now been demonstrated in the configuration scenario. The configuration workflow also passed live comparison, approval, application and recovery in Ubuntu on October 12. The synthetic restart workflow passed live planning, container simulation, approval, application and recovery on October 13. A read-only local evidence dashboard is now available; workflow controls and held-out evaluation remain pending.
 
 ## Run the current checks
 
@@ -29,7 +29,7 @@ The Nebius checks read local `.env` configuration. Copy `.env.example` to `.env`
 
 The container check downloads a Python image, builds only synthetic fixture data into a temporary image, and runs without host mounts or external network access. It uses a read-only root filesystem, non-root user, dropped capabilities, no-new-privileges, and memory/CPU/PID limits. Temporary container/image cleanup is attempted afterward; the base image and local fixtures remain. The baseline check performs no cleanup. The simulation deletes eligible files only from a container-local copy, verifies preserved file hashes and HTTP behavior, checks the original fixture remains unchanged, and writes JSON evidence under ignored `artifacts/`. The host rejects incomplete or inconsistent worker reports.
 
-Validation recorded on October 7, 2026: the real Nebius smoke test passed; the developer reported the baseline container check passing on Ubuntu 24.04 / WSL 2 with rootless Podman 4.9.3. On October 11, 2026, the developer reported successful live Nebius planning, all 10 simulation tests, and a real Podman cleanup simulation with the strengthened report checks. Latest local test discovery ran 86 tests: 85 passed and one Windows symlink test was skipped; the developer previously ran all nine policy tests successfully in Ubuntu. Approval and comparison tests also passed in Ubuntu. The live recommended candidate was approved, applied, and restored, with file hashes and HTTP checks passing. Simulation/comparison unit tests mock Podman responses; the real container runs are separate. This is a controlled demo, not a complete security evaluation.
+Validation recorded on October 7, 2026: the real Nebius smoke test passed; the developer reported the baseline container check passing on Ubuntu 24.04 / WSL 2 with rootless Podman 4.9.3. On October 11, 2026, the developer reported successful live Nebius planning, all 10 simulation tests, and a real Podman cleanup simulation with the strengthened report checks. Local test discovery on October 13 ran 120 tests: 119 passed and one Windows symlink test was skipped; the developer previously ran all nine policy tests successfully in Ubuntu. Approval and comparison tests also passed in Ubuntu. The live recommended candidate was approved, applied, and restored, with file hashes and HTTP checks passing. Simulation/comparison unit tests mock Podman responses; the real container runs are separate. This is a controlled demo, not a complete security evaluation.
 
 ## Planned workflow
 
@@ -153,14 +153,48 @@ Use the candidate fixture and approval filename printed by the approval command.
 
 Only the named synthetic candidate fixture changes. The comparison baseline remains intact. Backups and transaction records are retained under ignored artifacts. As with cleanup, local records are trusted, locks do not stop unrelated writers, and power-loss durability is not guaranteed. A restored approval remains consumed. Nine tests cover real application/recovery, expiry, wrong scope, backup failure, failed postflight, interruption, replay and recovery conflicts.
 
-## Milestone checkpoint — October 12, 2026
+## Milestone checkpoint — October 13, 2026
 
 | Original target dates | Current demonstrated result | Remaining work |
 |---|---|---|
 | October 6–10 | Connected cleanup demo, live model call, policy and container verification | Full V1 checklist coverage is not certified; see acceptance checklist |
 | October 11–15 | Candidate evaluation, exact approval, controlled application and restoration demonstrated; two distinct valid AI configurations compared | Blueprint weighted ranking, fuller audit records, uniform approval/expiry semantics and broader failure coverage |
-| October 16–20 | Configuration scenario demonstrated end to end | Service restart, common API/dashboard, held-out evaluation, further integration and hardening |
+| October 16–20 | Configuration and session-based restart demonstrated end to end; initial read-only evidence API/dashboard | Interactive workflow controls, held-out evaluation, further integration and hardening |
 | October 21–25 | Not started as a release milestone | Clean-install reproduction, deployed build, full release/evaluation runs |
 | October 26–29 | Repository and ongoing documentation available | Video, final write-up, rule/link checks and submission |
 
-Two of three planned task families have a working controlled command-line demonstration. This is not a percentage of total project completion: interface, evaluation, release and submission work remain substantial. The dates are the original schedule, not claims that every acceptance criterion for a date range is finished.
+All three planned task families have a working controlled command-line demonstration. This is not a percentage of total project completion: interface, evaluation, release and submission work remain substantial. The dates are the original schedule, not claims that every acceptance criterion for a date range is finished.
+
+
+## Restart demo and evidence dashboard (October 13)
+
+The developer reported a successful real Nebius plan, restricted Podman simulation,
+explicit approval, and local session application/recovery. Revision 2 was checked
+before restoring revision 1 and stopping the session service. The executor controls
+only its own synthetic child processes, not system services. Application is session-based:
+it does not leave a persistent service running. Approval expires after 24 hours and
+cannot be reused. Recovery checks the original startup seed; no files are rewritten.
+Ctrl+C and ordinary failures attempt verified recovery. Forced termination or power
+loss is not covered by this session cleanup guarantee.
+
+```bash
+python3 scripts/restart_fixture.py
+python3 scripts/plan_restart.py restart-FIXTURE
+python3 scripts/check_restart_container.py restart-FIXTURE --plan restart-plan-PLAN.json
+python3 scripts/approve_restart.py restart-FIXTURE futureproof-restart-SIMULATION.json
+python3 scripts/apply_restart.py restart-FIXTURE restart-approval-APPROVAL.json
+```
+
+Replace placeholders with generated names. Type the displayed approval phrase only
+at the approval prompt, and type `RECOVER` at the application session prompt.
+
+```bash
+python3 scripts/dashboard.py
+```
+
+Open http://127.0.0.1:8765 in your browser. The initial dashboard and GET `/api/runs`
+show saved record names and historical statuses from all three fixture families.
+They do not revalidate records or approve/apply anything. The server binds only to
+loopback, does not serve arbitrary files, and never returns raw records or credentials.
+No additional packages are needed. Stop with Ctrl+C. The full workflow API,
+interactive approval controls, evaluation, and release hardening remain pending.
