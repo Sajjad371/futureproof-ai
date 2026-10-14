@@ -7,6 +7,7 @@ import stat
 import secrets
 from dashboard_jobs import Jobs, CREATORS
 from dashboard_approval import Reviews
+from evaluation_summary import summaries
 
 JOBS = Jobs()
 REVIEWS = Reviews()
@@ -30,7 +31,7 @@ details{background:#1e2b40;padding:16px;margin:16px 0;border-radius:8px}summary{
 <button id="simulate" disabled>Run fixed container check</button>
 <button id="ai" disabled>Generate AI candidates and simulate (uses credits)</button><p id="job" role="status"></p>
 <p>Configuration tests a fixed 2 MiB candidate; restart tests a fixed demo restart. Fixed checks use no AI credits. The AI button requests configuration candidates from Nebius and simulates permitted plans. Neither button approves or applies changes. Cleanup and restart AI planning remain in the CLI.</p></section>
-<button id="refresh">Refresh evidence</button>
+<section class="note"><h2>Saved evaluations</h2><p>Developer-authored configuration tests. Planning and container results are separate; these scores are not proof of general safety.</p><div id="evaluations"></div></section><button id="refresh">Refresh evidence</button>
 <label for="family">Scenario</label> <select id="family"><option value="">All scenarios</option><option>cleanup</option><option>configuration</option><option>restart</option></select>
 <section id="approval-panel" class="note" hidden><h2>Review configuration approval</h2><pre id="approval-details"></pre><p>Scope: selected synthetic candidate only. Approval expires after 24 hours. No change is applied here.</p><label for="approval-phrase">Type the exact displayed approval phrase</label><input id="approval-phrase" autocomplete="off"><button id="approve">Record approval only</button><p id="approval-status" role="status"></p></section><p id="summary"></p><p id="error" role="alert"></p><main id="rows"></main>
 <script>
@@ -63,7 +64,8 @@ article.append(title);if(item.family==='configuration'&&/^config-approval-[0-9a-
 const detail=document.createElement('pre');detail.textContent=JSON.stringify(item.details,null,2);article.append(detail);box.append(article)}rows.append(box)}
 document.getElementById('summary').textContent=groups.size+' fixtures shown; '+data.records.length+' records loaded; '+data.skipped+' unreadable or unsupported records skipped. Limit: 500 records.';
 if(!groups.size)rows.textContent='No saved evidence for this selection.';}
-async function refresh(){try{const r=await fetch('/api/runs');if(!r.ok)throw Error('Unable to load evidence');
+async function refreshEvaluations(){const r=await fetch('/api/evaluations');if(!r.ok)throw Error('Unable to load evaluations');const d=await r.json();const box=document.getElementById('evaluations');box.replaceChildren();for(const report of d.reports){const p=document.createElement('p');p.textContent=report.kind+': '+report.passed+'/'+report.total+' - '+report.status+' ('+report.record+')';box.append(p)}if(!d.reports.length)box.textContent='No saved evaluation reports.';if(d.skipped){const p=document.createElement('p');p.textContent=d.skipped+' unsupported or inconsistent reports skipped.';box.append(p)}}
+async function refresh(){try{await refreshEvaluations();const r=await fetch('/api/runs');if(!r.ok)throw Error('Unable to load evidence');
 data=await r.json();render();
 document.getElementById('error').textContent='';}catch(e){document.getElementById('error').textContent=e.message}}
 document.getElementById('refresh').onclick=refresh;document.getElementById('family').onchange=render;refresh();</script></html>'''
@@ -200,6 +202,8 @@ class Handler(BaseHTTPRequestHandler):
             content, kind = json.dumps(JOBS.status()).encode(), 'application/json'
         elif self.path == '/api/runs':
             content, kind = json.dumps(inventory()).encode(), 'application/json'
+        elif self.path == '/api/evaluations':
+            content, kind = json.dumps(summaries()).encode(), 'application/json'
         elif self.path == '/favicon.ico':
             self.send_response(204)
             self.end_headers()

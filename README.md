@@ -43,11 +43,11 @@ Validation recorded on October 7, 2026: the real Nebius smoke test passed; the d
 
 ## Delivery plan
 
-- October 6–10: One connected cleanup scenario.
-- October 11–15: Candidate comparison, approval, application, and recovery.
-- October 16–20: Configuration/restart fixtures, stronger checks, dashboard, and evaluation.
-- October 21–25: Release testing and reproducibility.
-- October 26–29: Submission preparation and buffer.
+- October 6â€“10: One connected cleanup scenario.
+- October 11â€“15: Candidate comparison, approval, application, and recovery.
+- October 16â€“20: Configuration/restart fixtures, stronger checks, dashboard, and evaluation.
+- October 21â€“25: Release testing and reproducibility.
+- October 26â€“29: Submission preparation and buffer.
 
 See [the acceptance checklist](docs/acceptance-checklist.md) for requirements and verification gates.
 
@@ -153,15 +153,15 @@ Use the candidate fixture and approval filename printed by the approval command.
 
 Only the named synthetic candidate fixture changes. The comparison baseline remains intact. Backups and transaction records are retained under ignored artifacts. As with cleanup, local records are trusted, locks do not stop unrelated writers, and power-loss durability is not guaranteed. A restored approval remains consumed. Nine tests cover real application/recovery, expiry, wrong scope, backup failure, failed postflight, interruption, replay and recovery conflicts.
 
-## Milestone checkpoint — October 13, 2026
+## Milestone checkpoint â€” October 13, 2026
 
 | Original target dates | Current demonstrated result | Remaining work |
 |---|---|---|
-| October 6–10 | Connected cleanup demo, live model call, policy and container verification | Full V1 checklist coverage is not certified; see acceptance checklist |
-| October 11–15 | Candidate evaluation, exact approval, controlled application and restoration demonstrated; two distinct valid AI configurations compared | Blueprint weighted ranking, fuller audit records, uniform approval/expiry semantics and broader failure coverage |
-| October 16–20 | Configuration and session-based restart demonstrated end to end; initial read-only evidence API/dashboard | Interactive workflow controls, held-out evaluation, further integration and hardening |
-| October 21–25 | Not started as a release milestone | Clean-install reproduction, deployed build, full release/evaluation runs |
-| October 26–29 | Repository and ongoing documentation available | Video, final write-up, rule/link checks and submission |
+| October 6â€“10 | Connected cleanup demo, live model call, policy and container verification | Full V1 checklist coverage is not certified; see acceptance checklist |
+| October 11â€“15 | Candidate evaluation, exact approval, controlled application and restoration demonstrated; two distinct valid AI configurations compared | Blueprint weighted ranking, fuller audit records, uniform approval/expiry semantics and broader failure coverage |
+| October 16â€“20 | Configuration and session-based restart demonstrated end to end; initial read-only evidence API/dashboard | Interactive workflow controls, held-out evaluation, further integration and hardening |
+| October 21â€“25 | Not started as a release milestone | Clean-install reproduction, deployed build, full release/evaluation runs |
+| October 26â€“29 | Repository and ongoing documentation available | Video, final write-up, rule/link checks and submission |
 
 All three planned task families have a working controlled command-line demonstration. This is not a percentage of total project completion: interface, evaluation, release and submission work remain substantial. The dates are the original schedule, not claims that every acceptance criterion for a date range is finished.
 
@@ -225,3 +225,43 @@ All 15 passed locally on October 13. This is not held-out model-quality evaluati
 container testing, or proof of production safety. Reports stay under ignored artifacts.
 Held-out evaluation, complete cross-scenario dashboard coverage, job persistence,
 release reproducibility, and submission work remain outstanding.
+
+
+## Frozen configuration evaluation - October 14
+
+The developer ran a frozen, prospective, developer-authored suite in Ubuntu:
+10/10 supported requests produced exact requested plans; 5/5 forbidden requests
+returned the required refusal. A separate replay verified all 10 accepted plans
+in restricted Podman containers. HTTP checks exercised exact 2-8 MiB limits,
+one byte over the limit, authentication, document preservation, and unchanged
+original fixtures. This is one narrow configuration suite, not independent/blinded
+validation, broad held-out coverage, or a production safety guarantee.
+
+```bash
+python3 scripts/evaluate_ai.py --freeze
+python3 scripts/evaluate_ai.py --run artifacts/evaluations/ai-suite-ID.json
+python3 scripts/evaluate_containers.py artifacts/evaluations/ai-suite-ID.json artifacts/evaluations/ai-evaluation-ID.json
+```
+
+Use generated filenames. The AI run uses up to 15 paid API requests; container
+replay uses none. Raw rejected model text and credentials are not saved. Report
+fingerprints bind local inputs but do not authenticate against malicious local edits.
+The dashboard now summarizes saved evaluations separately from fixture histories.
+Live reports remain ignored local artifacts; the repository contains runners and tests.
+
+## Fresh-install verification checklist
+
+From a new Ubuntu/WSL checkout, use Python 3.11+ and rootless Podman. No third-party
+Python packages are required. Begin with the read-only prerequisite check:
+
+```bash
+python3 scripts/check_environment.py
+python3 -m unittest discover -s scripts -p "test_*.py"
+python3 scripts/evaluate_policies.py
+```
+
+Then create a fresh configuration fixture and run its fixed container check. Do not
+copy old approvals or reports to claim a clean run. Configure a new private `.env`
+from `.env.example` only when a live model call is needed; never commit credentials.
+A successful preflight alone does not prove clean-install reproducibility. That fresh
+checkout/container smoke test is still pending.

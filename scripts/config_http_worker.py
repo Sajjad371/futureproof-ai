@@ -107,6 +107,8 @@ def run_checks(root, value, deployed=False):
             if value == MIB:
                 require(request('POST', '/upload', payload)[0] == 413, 'Restored limit must reject 2 MiB')
                 payload = b'u' * MIB
+        # Verify the exact configured boundary, including limits above 2 MiB.
+        payload = b'u' * value
         require(request('POST', '/upload', payload, auth=False)[0] == 401, 'Authentication check failed')
         require(not uploaded.exists(), 'Unauthorized upload wrote data')
         status, receipt = request('POST', '/upload', payload)
@@ -123,7 +125,7 @@ def run_checks(root, value, deployed=False):
         require(hashlib.sha256((root / 'customer-demo.txt').read_bytes()).hexdigest() == manifest['files']['customer-demo.txt'],
                 'Protected file changed')
         return dict(status='passed', baseline_rejected=not deployed or value == MIB, upload_roundtrip=True,
-                    oversized_rejected=True, unauthorized_rejected=True, health=True,
+                    exact_limit_roundtrip=True, oversized_rejected=True, unauthorized_rejected=True, health=True,
                     document_preserved=True, protected_settings=True, **measurements)
     finally:
         server.shutdown()
