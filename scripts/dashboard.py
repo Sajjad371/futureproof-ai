@@ -278,7 +278,8 @@ if __name__ == '__main__':
         server.public_origin = args.public_origin
         if password:
             server.demo_authorization = 'Basic ' + base64.b64encode(('demo:' + password).encode()).decode()
-        print('Evidence dashboard: http://127.0.0.1:%s - Ctrl+C to stop' % server.server_port, flush=True)
+        address = args.public_origin or ('http://127.0.0.1:%s' % server.server_port)
+        print('Evidence dashboard: %s - Ctrl+C to stop' % address, flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

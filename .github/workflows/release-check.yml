@@ -24,6 +24,7 @@ jobs:
       - name: Real container checks and timings
         run: python3 scripts/container_smoke.py --runs 2
       - name: Preserve verification results
+        # Include actual cleanup mutation simulations in addition to baseline checks.
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -32,3 +33,5 @@ jobs:
             artifacts/release-checks/
             artifacts/container-smoke/
           retention-days: 14
+      - name: Cleanup variation simulations
+        run: python3 scripts/check_cleanup_variations.py

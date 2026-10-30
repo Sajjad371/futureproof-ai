@@ -12,12 +12,14 @@ This checklist records evidence, not a claim that all milestones are complete.
 | Dashboard presentation | Responsive styles, focus states, workflow guidance added; user desktop screenshots reviewed October 30 |
 | Repeatability and timing | User reported three Ubuntu suite runs passing in 21.22, 25.86 and 19.02 seconds; median 21.22 seconds. This measures suite wall time, not model latency or resource usage |
 | Fresh clone on existing machine | Previously passed real configuration Podman smoke test |
-| Independent machine | Pending; user has no second computer or cloud server |
-| Hosted executable demo | Pending; localhost is not public hosting. Downloadable test build is the available submission route |
+| Independent machine | GitHub-hosted Ubuntu 24.04 run 41032583789 passed runtime setup, repeated tests, and real container checks |
+| Hosted executable demo | October 30 temporary authenticated Cloudflare tunnel: config-dtf2ac97 comparison, config-ftswk_co approved/applied/restored; five application and five recovery checks true, approval consumed. Laptop and tunnel must remain running; not permanent hosting |
 | AI evaluation | Historical developer-authored 15/15 planning, ten supported container replays; not independent benchmark |
 | MIT and submission text | Published in commit 1c90779 |
 | Video | User recording pending after final rehearsal |
 | Final feedback and links | Review submission.md, add video and test-build URL, test signed-out access |
 | Devpost submission | Pending; require actual submission confirmation |
 
-Do not expose the local execution dashboard on a public network as a shortcut to hosting. Its controls are designed for localhost. Any hosted interactive execution service needs a separate deployment and security review.
+Four fixed-plan cleanup container variations passed locally: standard, retention-edge, empty-expired and large-expired. These are container regression cases, not broader AI evaluation.
+
+Public demo mode requires an exact HTTPS tunnel origin and a demo-only password. Keep the listener bound to loopback. Only trusted reviewers should receive credentials: authenticated users can run demo workflows and consume inference credits. This shared, temporary demonstration is not a hardened multi-user service.
