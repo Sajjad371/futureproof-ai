@@ -1,0 +1,34 @@
+name: Independent Linux release check
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+          python3 --version
+          podman --version
+      - name: Verify rootless environment
+        run: python3 scripts/check_environment.py
+      - name: Repeated automated tests
+        run: python3 scripts/release_check.py --runs 2
+      - name: Real container checks and timings
+        run: python3 scripts/container_smoke.py --runs 2
+      - name: Preserve verification results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-verification
+          path: |
+            artifacts/release-checks/
+            artifacts/container-smoke/
+          retention-days: 14
