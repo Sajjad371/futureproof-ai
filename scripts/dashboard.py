@@ -8,6 +8,7 @@ import secrets
 from dashboard_jobs import Jobs, CREATORS
 from dashboard_approval import Reviews
 from evaluation_summary import summaries
+from approval_display import state as approval_display_state
 
 JOBS = Jobs()
 REVIEWS = Reviews()
@@ -53,14 +54,14 @@ function executionControls(item,article){
 const section=document.createElement('section');const explanation=document.createElement('p');explanation.textContent='Apply changes this synthetic fixture using the saved approval. Recover restores its backup. Server checks may reject expired, consumed, or changed approvals.';section.append(explanation);
 const label=document.createElement('label');label.textContent='Confirmation: ';const input=document.createElement('input');input.autocomplete='off';label.append(input);section.append(label);
 const outcome=document.createElement('p');outcome.setAttribute('role','status');
-for(const action of ['apply','recover']){const phrase=action.toUpperCase()+' '+item.fixture;const button=document.createElement('button');button.textContent=action==='apply'?'Apply approved change':'Recover original configuration';button.onclick=async()=>{if(input.value!==phrase){outcome.textContent='Type exactly: '+phrase;return}if(busy){outcome.textContent='Wait for the current job to finish.';return}busy=true;controls();button.disabled=true;try{await post('/api/jobs',{family:'configuration',fixture:item.fixture,action,approval:item.record,confirmation:input.value});input.value='';outcome.textContent='Started '+action+'. Follow progress above; wait until it finishes.';document.getElementById('job').scrollIntoView({behavior:'smooth'});poll()}catch(e){outcome.textContent=e.message;busy=false;controls();button.disabled=false}};section.append(button)}section.append(outcome);article.append(section)}
+for(const action of ['apply','recover']){const phrase=action.toUpperCase()+' '+item.fixture;const button=document.createElement('button');button.textContent=action==='apply'?'Apply approved change':'Recover original configuration';button.disabled=action==='apply'?item.approval_state!=='unused_not_revalidated':item.approval_state!=='consumed';button.onclick=async()=>{if(input.value!==phrase){outcome.textContent='Type exactly: '+phrase;return}if(busy){outcome.textContent='Wait for the current job to finish.';return}busy=true;controls();button.disabled=true;try{await post('/api/jobs',{family:'configuration',fixture:item.fixture,action,approval:item.record,confirmation:input.value});input.value='';outcome.textContent='Started '+action+'. Follow progress above; wait until it finishes.';document.getElementById('job').scrollIntoView({behavior:'smooth'});poll()}catch(e){outcome.textContent=e.message;busy=false;controls();button.disabled=false}};section.append(button)}section.append(outcome);article.append(section)}
 function render(){const rows=document.getElementById('rows');rows.replaceChildren();const groups=new Map();
 for(const item of data.records){if(document.getElementById('family').value && item.family!==document.getElementById('family').value)continue;
 const key=item.family+' / '+item.fixture;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item)}
 for(const [key,items] of groups){items.sort((a,b)=>b.modified_ns-a.modified_ns);const box=document.createElement('details');
 const heading=document.createElement('summary');heading.textContent=key+' - latest saved record: '+items[0].status;box.append(heading);
 for(const item of items){const article=document.createElement('article');const title=document.createElement('p');title.textContent=item.record+' - '+item.status;
-article.append(title);if(item.family==='configuration'&&/^config-approval-[0-9a-f]{32}\\.json$/.test(item.record)){executionControls(item,article)}if(item.family==='configuration'&&item.record.startsWith('config-comparison-')&&item.status==='passed'){const button=document.createElement('button');button.textContent='Review recommended candidate';button.onclick=()=>openReview(item);article.append(button)}const note=document.createElement('p');note.textContent=item.stage==='approval'?'Historical approval; may be expired or consumed.':'';article.append(note);
+article.append(title);if(item.family==='configuration'&&/^config-approval-[0-9a-f]{32}\\.json$/.test(item.record)){executionControls(item,article)}if(item.family==='configuration'&&item.record.startsWith('config-comparison-')&&item.status==='passed'){const button=document.createElement('button');button.textContent='Review recommended candidate';button.onclick=()=>openReview(item);article.append(button)}const note=document.createElement('p');note.textContent=item.stage==='approval'?'Approval: '+({consumed:'consumed - cannot be applied again',expired:'expired - review and approve again',invalid:'invalid record',expiry_unknown:'expiry unknown',unused_not_revalidated:'unused and within its time window - executor will revalidate'}[item.approval_state]||'unknown'):'';article.append(note);
 const detail=document.createElement('pre');detail.textContent=JSON.stringify(item.details,null,2);article.append(detail);box.append(article)}rows.append(box)}
 document.getElementById('summary').textContent=groups.size+' fixtures shown; '+data.records.length+' records loaded; '+data.skipped+' unreadable or unsupported records skipped. Limit: 500 records.';
 if(!groups.size)rows.textContent='No saved evidence for this selection.';}
@@ -135,6 +136,7 @@ def inventory(root=ROOT):
                     records.append({'family': family, 'fixture': fixture.name,
                                     'record': path.relative_to(fixture).as_posix(), 'status': status,
                                     'stage': stage, 'modified_ns': info.st_mtime_ns,
+                                    'approval_state': approval_display_state(fixture, path, data) if stage == 'approval' else None,
                                     'details': summary_details(data)})
                     if len(records) >= 500:
                         return {'records': records, 'skipped': skipped}

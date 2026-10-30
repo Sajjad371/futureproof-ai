@@ -4,6 +4,8 @@ Test AI-proposed Linux application changes in disposable environments before app
 
 ## Status
 
+Judge resources: [setup and demo](docs/judge-setup.md), [project description](docs/submission.md), and [recording script](docs/demo-script.md).
+
 Version 1 now supports one complete simulation flow: generate a structured cleanup plan through Nebius, validate it against a narrow read-only policy, execute it inside a disposable restricted Podman container, and verify the result. The local human-approval command has passed unit tests and a manual Ubuntu run. Controlled demo application and recovery have passed Ubuntu tests and a manual recovery run. The live comparison-to-approval-to-application-to-recovery flow passed in Ubuntu on October 11, 2026, with one valid candidate. The cleanup fixture has only one valid complete plan; distinct valid alternatives have now been demonstrated in the configuration scenario. The configuration workflow also passed live comparison, approval, application and recovery in Ubuntu on October 12. The synthetic restart workflow passed live planning, container simulation, approval, application and recovery on October 13. The configuration workflow also passed end to end through the local dashboard on October 13. Broader held-out evaluation remains pending.
 
 ## Run the current checks
@@ -53,7 +55,7 @@ See [the acceptance checklist](docs/acceptance-checklist.md) for requirements an
 
 ## Development setup
 
-Planned stack: Python 3.11+, FastAPI, Pydantic, Next.js/React, SQLite, and a restricted Linux container runtime. Dependency versions and executable setup commands will be added with the first implementation.
+Implemented stack: Python standard library, HTML/JavaScript dashboard, JSON evidence files, rootless Podman, and NVIDIA Nemotron through Nebius Token Factory. The supported runtime requires Python 3.11+ and Ubuntu/Linux; there are no pip dependencies.
 
 Keep API credentials in local environment configuration. Never commit real keys. The example configuration includes the verified Nebius endpoint and model ID, with an empty API key.
 
@@ -263,5 +265,23 @@ python3 scripts/evaluate_policies.py
 Then create a fresh configuration fixture and run its fixed container check. Do not
 copy old approvals or reports to claim a clean run. Configure a new private `.env`
 from `.env.example` only when a live model call is needed; never commit credentials.
-A successful preflight alone does not prove clean-install reproducibility. That fresh
-checkout/container smoke test is still pending.
+A successful preflight alone does not prove clean-install reproducibility. See the fresh-checkout verification below for the completed same-machine smoke test.
+
+
+### Fresh checkout verified on October 14
+
+The developer cloned the published repository into `/home/sajjad/futureproof-ai-clean-check`
+and reported all prerequisite checks and all 148 automated tests passing without
+copying original credentials or evidence. A new configuration fixture passed a real
+restricted Podman smoke test, including HTTP behavior and original-file preservation.
+This verifies a fresh checkout on the existing Ubuntu/WSL machine, not a separate
+machine or fresh operating system. Existing Podman image caches may have been reused.
+
+The dashboard now labels approvals as consumed, expired, invalid, or unused/not
+revalidated. Apply is disabled for known consumed/expired approvals. Recovery stays
+available for consumed approvals, subject to executor checks. Display labels never
+replace executor state validation. Separate-machine reproduction remains outstanding.
+
+On October 14, the developer also reported all 150 tests passing in Ubuntu after
+the approval-display update, and visually confirmed that a consumed configuration
+approval has its Apply button disabled.
