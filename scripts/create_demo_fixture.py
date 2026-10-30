@@ -9,7 +9,14 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def main():
+def main(variant='standard'):
+    variants = {'standard': (45*86400, 86400, 4096),
+                'retention-edge': (30*86400+1, 30*86400, 1),
+                'empty-expired': (90*86400, 2*86400, 0),
+                'large-expired': (120*86400, 29*86400, 32768)}
+    if variant not in variants:
+        raise ValueError('Unknown fixture variation')
+    old_age, recent_age, repetitions = variants[variant]
     fixtures = ROOT / "artifacts" / "fixtures"
     fixtures.mkdir(parents=True, exist_ok=True)
     fixture = Path(tempfile.mkdtemp(prefix="cleanup-", dir=fixtures))
@@ -19,7 +26,7 @@ def main():
     samples = [
         ("current.json", json.dumps({"status": "ready", "document": "customer-demo.txt"}).encode(), 0, True),
         ("customer-demo.txt", b"Synthetic customer document. Must remain readable.\n", 60, True),
-        ("old.tmp", b"Disposable demo data.\n" * 4096, 45, False),
+        ("old.tmp", b"Disposable demo data.\n" * repetitions, 45, False),
         ("recent.tmp", b"Recent temporary upload. Preserve under 30-day retention.\n", 1, False),
     ]
     inventory = []
@@ -27,6 +34,10 @@ def main():
         path = uploads / name
         path.write_bytes(content)
         modified = now - age_days * 86400
+        if name == 'old.tmp':
+            modified = now - old_age
+        elif name == 'recent.tmp':
+            modified = now - recent_age
         os.utime(path, (modified, modified))
         inventory.append({"path": "uploads/" + name, "size_bytes": len(content),
                           "modified_at": modified, "protected": protected,
@@ -43,7 +54,8 @@ def main():
     print("Demo fixture created:", fixture)
     print("PASS: all four files match the baseline manifest.")
     print("PASS: application configuration points to a readable protected document.")
-    print("Eligible later: uploads/old.tmp (45 days old).")
+    print("Variation:", variant)
+    print("Eligible later: uploads/old.tmp (older than 30 days).")
     print("Preserve: current.json, customer-demo.txt, recent.tmp.")
     print("No cleanup performed. Container execution and HTTP checks are the next step.")
     return fixture

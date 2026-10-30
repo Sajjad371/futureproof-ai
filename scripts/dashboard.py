@@ -5,6 +5,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import stat
 import secrets
+import base64
+import getpass
+import re
 from datetime import datetime, timezone
 from dashboard_jobs import Jobs, CREATORS
 from dashboard_approval import Reviews
@@ -157,10 +160,34 @@ def export_summary(root=ROOT):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def authorize(self):
+        origin = getattr(self.server, 'public_origin', None)
+        if origin:
+            allowed = (origin.removeprefix('https://'),)
+        else:
+            allowed = ('127.0.0.1:%s' % self.server.server_port, 'localhost:%s' % self.server.server_port)
+        if self.headers.get('Host') not in allowed:
+            self.send_error(403)
+            return False
+        if origin:
+            expected = self.server.demo_authorization
+            supplied = self.headers.get('Authorization', '')
+            if not secrets.compare_digest(supplied.encode(), expected.encode()):
+                self.send_response(401)
+                self.send_header('WWW-Authenticate', 'Basic realm="FutureProof demo", charset="UTF-8"')
+                self.send_header('Content-Length', '0')
+                self.send_header('Cache-Control', 'no-store')
+                self.end_headers()
+                return False
+        return True
+
     def do_POST(self):
+        if not self.authorize():
+            return
         host = self.headers.get('Host')
-        allowed = ('127.0.0.1:%s' % self.server.server_port, 'localhost:%s' % self.server.server_port)
-        if (host not in allowed or self.headers.get('Origin') not in (None, 'http://' + host)
+        origin = getattr(self.server, 'public_origin', None)
+        allowed_origins = (origin,) if origin else (None, 'http://' + host)
+        if (self.headers.get('Origin') not in allowed_origins
                 or self.headers.get('X-Control-Token') != CONTROL_TOKEN):
             self.send_error(403)
             return
@@ -205,9 +232,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def respond_get(self):
         # Reject cross-origin use and DNS rebinding hostnames.
-        if self.headers.get('Host') not in ('127.0.0.1:%s' % self.server.server_port,
-                                            'localhost:%s' % self.server.server_port):
-            self.send_error(403)
+        if not self.authorize():
             return
         if self.path == '/':
             content, kind = PAGE.replace('__CONTROL_TOKEN__', CONTROL_TOKEN).encode(), 'text/html; charset=utf-8'
@@ -240,8 +265,19 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--public-origin', help='Exact HTTPS trycloudflare.com origin; enables mandatory password protection')
     args = parser.parse_args()
+    if args.public_origin and not re.fullmatch(r'https://[a-z0-9-]+\.trycloudflare\.com', args.public_origin):
+        parser.error('Expected the exact HTTPS Quick Tunnel origin without a trailing slash')
+    password = None
+    if args.public_origin:
+        password = getpass.getpass('Choose a demo-only password (at least 16 characters; input hidden): ')
+        if len(password) < 16:
+            parser.error('Demo password must have at least 16 characters')
     with HTTPServer(('127.0.0.1', args.port), Handler) as server:
+        server.public_origin = args.public_origin
+        if password:
+            server.demo_authorization = 'Basic ' + base64.b64encode(('demo:' + password).encode()).decode()
         print('Evidence dashboard: http://127.0.0.1:%s - Ctrl+C to stop' % server.server_port, flush=True)
         try:
             server.serve_forever()
