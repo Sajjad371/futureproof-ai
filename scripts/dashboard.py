@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import stat
 import secrets
+from datetime import datetime, timezone
 from dashboard_jobs import Jobs, CREATORS
 from dashboard_approval import Reviews
 from evaluation_summary import summaries
@@ -21,10 +22,13 @@ PAGE = '''<!doctype html><html lang="en"><meta charset="utf-8">
 <title>FutureProof AI - Evidence</title><style>
 body{font:16px system-ui;background:#101827;color:#e8eef8;margin:0;padding:36px;max-width:1100px}
 h1{font-size:32px}p{color:#b8c7da}button{padding:10px 18px;cursor:pointer}
+body{margin:auto;line-height:1.6}h1{font-size:42px;letter-spacing:-1px;margin-bottom:0}h2{font-size:21px}nav{padding:14px 0;color:#83dfcb}a{color:#83dfcb}button,select,input{font:inherit;border:1px solid #51627a;border-radius:8px;background:#263b53;color:#f3f7fc;margin:4px;padding:10px 14px}button:hover:not(:disabled){background:#365777}button:disabled{opacity:.4;cursor:not-allowed}input:focus,button:focus-visible,select:focus{outline:2px solid #83dfcb;outline-offset:3px}section.note{margin:20px 0}pre{background:#121e30;padding:16px;border-radius:8px;font-size:13px}summary{font-weight:600}@media(max-width:640px){body{padding:16px}h1{font-size:32px}button{width:100%;margin:5px 0}input{max-width:85%}}
 table{width:100%;border-collapse:collapse;margin-top:24px}td,th{text-align:left;padding:12px;border-bottom:1px solid #344056;overflow-wrap:anywhere}
 .note{padding:16px;background:#1e2b40;border-radius:8px}#error{color:#ffb5b5}
 details{background:#1e2b40;padding:16px;margin:16px 0;border-radius:8px}summary{cursor:pointer;overflow-wrap:anywhere}select{padding:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere}article{padding:12px;border-top:1px solid #45536a}
 </style><h1>FutureProof AI</h1><p>Review saved evidence across cleanup, configuration, and restart demos.</p>
+<nav aria-label="Workflow">1. Create fixture &nbsp; / &nbsp; 2. Simulate &nbsp; / &nbsp; 3. Review &amp; approve &nbsp; / &nbsp; 4. Apply &amp; recover</nav>
+<p><a href="/api/export" download="futureproof-evidence.json">Download evidence summary (JSON)</a></p>
 <p class="note">Saved statuses are historical reports, not a fresh validation or permission to apply changes.</p>
 <section class="note"><h2>Demo controls</h2>
 <label for="create-family">New fixture</label> <select id="create-family"><option>configuration</option><option>restart</option><option>cleanup</option></select>
@@ -145,6 +149,13 @@ def inventory(root=ROOT):
     return {'records': records, 'skipped': skipped}
 
 
+def export_summary(root=ROOT):
+    """Export only the same bounded, projected data exposed by the viewer."""
+    return {'schema_version': 1, 'exported_at': datetime.now(timezone.utc).isoformat(),
+            'scope': 'Historical projected summaries; not execution authorization or raw evidence.',
+            'runs': inventory(root), 'evaluations': summaries(root)}
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         host = self.headers.get('Host')
@@ -206,6 +217,8 @@ class Handler(BaseHTTPRequestHandler):
             content, kind = json.dumps(inventory()).encode(), 'application/json'
         elif self.path == '/api/evaluations':
             content, kind = json.dumps(summaries()).encode(), 'application/json'
+        elif self.path == '/api/export':
+            content, kind = json.dumps(export_summary(), indent=2).encode(), 'application/json'
         elif self.path == '/favicon.ico':
             self.send_response(204)
             self.end_headers()
@@ -215,6 +228,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.send_response(200)
         self.send_header('Content-Type', kind)
+        if self.path == '/api/export':
+            self.send_header('Content-Disposition', 'attachment; filename="futureproof-evidence.json"')
         self.send_header('Content-Length', str(len(content)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
